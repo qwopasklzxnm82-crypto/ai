@@ -1,378 +1,187 @@
 <!DOCTYPE html>
-<html lang="ko" style="height:100%;">
+<html lang="ko" style="height: 100%;">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>오늘의 하늘 · 날씨 에이전트</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>AI 학습 어시스턴트</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
 <style>
-  :root{
-    /* base sky tokens — reassigned live by JS per condition/time */
-    --sky-a: #4FA8E8;      /* day azure */
-    --sky-b: #7C6BAE;      /* dusk violet */
-    --sky-c: #10163A;      /* night indigo */
-    --sky-d: #FFD3B6;      /* dawn blush */
-    --foam:  #F4FAFF;
-    --ink:   #0B1220;
-    --glass-border: rgba(244,250,255,0.28);
-    --glass-fill: rgba(244,250,255,0.10);
-    --blob-speed: 22s;
-    --transition-slow: 1400ms cubic-bezier(.22,.61,.36,1);
-  }
-  *{box-sizing:border-box;}
-  html,body{height:100%;margin:0;}
-  body{
-    font-family:'Inter',sans-serif;
-    color:var(--foam);
-    background: linear-gradient(160deg, var(--sky-c), var(--sky-b) 55%, var(--sky-a));
-    transition: background var(--transition-slow);
-    min-height:100%;
-    overflow-x:hidden;
-    position:relative;
+  :root {
+    --ink: #1c2541;
+    --ink-soft: #4a5578;
+    --paper: #eef1f8;
+    --paper-2: #e2e7f5;
+    --card: #ffffff;
+    --accent: #0ea5a0;
+    --accent-soft: #d7f3ee;
+    --line: #dfe4f1;
   }
 
-  /* ---------- fluid signature background ---------- */
-  .fluid-layer{
-    position:fixed; inset:0; z-index:0; pointer-events:none;
-    opacity:0.9;
-    transition: opacity var(--transition-slow);
-  }
-  .fluid-layer svg{width:100%;height:100%;}
-  .blob{
-    mix-blend-mode: screen;
-    filter: url(#fluidTurb);
-    transform-origin:center;
-    animation: drift var(--blob-speed) ease-in-out infinite;
-  }
-  .blob.b2{ animation-duration: calc(var(--blob-speed) * 1.35); animation-delay:-4s; }
-  .blob.b3{ animation-duration: calc(var(--blob-speed) * 0.8); animation-delay:-9s; }
-  @keyframes drift{
-    0%{ transform: translate(-2%,-1%) scale(1); }
-    33%{ transform: translate(3%,4%) scale(1.08); }
-    66%{ transform: translate(-4%,2%) scale(0.96); }
-    100%{ transform: translate(-2%,-1%) scale(1); }
-  }
-  .grain{
-    position:fixed; inset:0; z-index:1; pointer-events:none;
-    opacity:0.045; mix-blend-mode:overlay;
-    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  * { box-sizing: border-box; }
+
+  html, body {
+    height: 100%;
+    margin: 0;
   }
 
-  /* ---------- layout ---------- */
-  .stage{ position:relative; z-index:2; min-height:100%; display:flex; flex-direction:column; padding: 28px 6vw 120px; }
-
-  .eyebrow-row{ display:flex; justify-content:space-between; align-items:center; font-family:'JetBrains Mono',monospace; font-size:12px; letter-spacing:.12em; text-transform:uppercase; color:rgba(244,250,255,0.72); }
-  .eyebrow-row .dot{ display:inline-block; width:6px;height:6px;border-radius:50%; background:var(--foam); margin-right:8px; box-shadow:0 0 8px var(--foam); }
-
-  .hero{ margin-top: 8vh; display:flex; flex-direction:column; gap:6px; }
-  .place{ font-family:'Space Grotesk',sans-serif; font-size:15px; font-weight:500; letter-spacing:.02em; color:rgba(244,250,255,0.85);}
-  .temp-row{ display:flex; align-items:flex-end; gap:18px; flex-wrap:wrap; }
-  .temp-big{ font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:clamp(72px,15vw,168px); line-height:0.9; letter-spacing:-0.02em; }
-  .temp-big sup{ font-size:0.32em; font-weight:500; vertical-align:36%; opacity:.85;}
-  .cond-block{ display:flex; flex-direction:column; gap:6px; padding-bottom: 1.4vw; }
-  .cond-name{ font-size:20px; font-weight:600; font-family:'Space Grotesk',sans-serif;}
-  .cond-sub{ font-family:'JetBrains Mono',monospace; font-size:13px; color:rgba(244,250,255,0.72);}
-
-  .weather-icon{ width:1em; height:1em; }
-
-  /* hourly strip */
-  .hourly-wrap{ margin-top:6vh; }
-  .hourly-label{ font-family:'JetBrains Mono',monospace; font-size:12px; letter-spacing:.1em; text-transform:uppercase; color:rgba(244,250,255,0.65); margin-bottom:14px; }
-  .hourly-strip{
-    display:flex; gap:12px; overflow-x:auto; padding-bottom:10px; scroll-snap-type:x proximity;
-    -ms-overflow-style:none; scrollbar-width:none;
-  }
-  .hourly-strip::-webkit-scrollbar{ display:none; }
-  .hour-card{
-    scroll-snap-align:start;
-    flex:0 0 auto; width:84px; padding:16px 10px;
-    display:flex; flex-direction:column; align-items:center; gap:10px;
-    border-radius:20px;
-    background:var(--glass-fill);
-    border:1px solid var(--glass-border);
-    backdrop-filter:blur(18px) saturate(140%);
-    -webkit-backdrop-filter:blur(18px) saturate(140%);
-    transition: transform .3s ease, background .3s ease;
-  }
-  .hour-card:hover{ transform:translateY(-4px); background:rgba(244,250,255,0.16); }
-  .hour-card.now{ border-color:rgba(244,250,255,0.6); background:rgba(244,250,255,0.18); }
-  .hour-time{ font-family:'JetBrains Mono',monospace; font-size:12px; color:rgba(244,250,255,0.75); }
-  .hour-icon{ width:26px; height:26px; }
-  .hour-temp{ font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:16px; }
-
-  .meta-row{ margin-top:5vh; display:flex; gap:28px; flex-wrap:wrap; }
-  .meta-item{ font-family:'JetBrains Mono',monospace; font-size:12px; color:rgba(244,250,255,0.68); display:flex; flex-direction:column; gap:4px;}
-  .meta-item b{ font-family:'Space Grotesk',sans-serif; font-size:18px; color:var(--foam); font-weight:600; }
-
-  /* ---------- chat dock ---------- */
-  .chat-toggle{
-    position:fixed; right:6vw; bottom:28px; z-index:5;
-    display:flex; align-items:center; gap:10px;
-    padding:14px 20px; border-radius:999px;
-    background:var(--glass-fill); border:1px solid var(--glass-border);
-    backdrop-filter:blur(18px) saturate(140%); -webkit-backdrop-filter:blur(18px) saturate(140%);
-    color:var(--foam); font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:14px;
-    cursor:pointer; box-shadow:0 8px 30px rgba(0,0,0,0.25);
-    transition: transform .25s ease, background .25s ease;
-  }
-  .chat-toggle:hover{ transform:translateY(-2px); background:rgba(244,250,255,0.18); }
-  .chat-toggle .pulse{ width:8px;height:8px;border-radius:50%; background:#8CFFC7; box-shadow:0 0 10px #8CFFC7; animation:pulse 2.2s ease-in-out infinite; }
-  @keyframes pulse{ 0%,100%{opacity:1;} 50%{opacity:.35;} }
-
-  .chat-panel{
-    position:fixed; z-index:6; right:6vw; bottom:96px;
-    width:min(380px, 88vw); height:min(560px, 68vh);
-    border-radius:24px; overflow:hidden;
-    background:rgba(11,18,32,0.55);
-    border:1px solid var(--glass-border);
-    backdrop-filter:blur(24px) saturate(160%); -webkit-backdrop-filter:blur(24px) saturate(160%);
-    box-shadow:0 24px 60px rgba(0,0,0,0.35);
-    transform: translateY(16px) scale(0.98); opacity:0; pointer-events:none;
-    transition: all .35s cubic-bezier(.22,.61,.36,1);
-    display:flex; flex-direction:column;
-  }
-  .chat-panel.open{ transform: translateY(0) scale(1); opacity:1; pointer-events:auto; }
-  .chat-head{ display:flex; align-items:center; justify-content:space-between; padding:14px 18px; border-bottom:1px solid var(--glass-border); font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:14px; }
-  .chat-head .close{ cursor:pointer; opacity:.7; font-family:'JetBrains Mono',monospace; font-size:12px;}
-  .chat-head .close:hover{ opacity:1; }
-  .chat-panel iframe{ flex:1; width:100%; border:0; background:transparent; }
-
-  @media (max-width:640px){
-    .chat-panel{ right:4vw; left:4vw; width:auto; bottom:88px; }
-    .chat-toggle{ right:4vw; }
-    .stage{ padding:22px 5vw 110px; }
+  body {
+    font-family: 'Inter', -apple-system, sans-serif;
+    color: var(--ink);
+    background:
+      radial-gradient(circle at 15% 8%, rgba(14, 165, 160, 0.10), transparent 40%),
+      radial-gradient(circle at 85% 92%, rgba(14, 165, 160, 0.08), transparent 45%),
+      linear-gradient(180deg, var(--paper) 0%, var(--paper-2) 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: clamp(12px, 3vw, 32px);
   }
 
-  @media (prefers-reduced-motion: reduce){
-    .blob{ animation:none !important; }
-    .chat-toggle .pulse{ animation:none; }
+  .stage {
+    width: 100%;
+    max-width: 900px;
+    height: 100%;
+    max-height: 880px;
+    display: flex;
+    flex-direction: column;
   }
 
-  :focus-visible{ outline:2px solid var(--foam); outline-offset:3px; }
+  .card {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background: var(--card);
+    border-radius: 22px;
+    border: 1px solid var(--line);
+    box-shadow:
+      0 1px 2px rgba(28, 37, 65, 0.04),
+      0 20px 48px -16px rgba(28, 37, 65, 0.18);
+    overflow: hidden;
+  }
+
+  header {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 18px 24px;
+    background: var(--ink);
+    background: linear-gradient(135deg, #1c2541 0%, #263258 100%);
+    color: #fff;
+    flex-shrink: 0;
+  }
+
+  .avatar {
+    width: 42px;
+    height: 42px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, var(--accent), #0b7a76);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 17px;
+    flex-shrink: 0;
+    box-shadow: 0 4px 10px rgba(14, 165, 160, 0.35);
+  }
+
+  .header-text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    line-height: 1.2;
+    min-width: 0;
+  }
+
+  .header-text .title {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 600;
+    font-size: 16px;
+    letter-spacing: -0.01em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .header-text .subtitle {
+    font-size: 12.5px;
+    color: rgba(255, 255, 255, 0.62);
+  }
+
+  .status {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 12.5px;
+    color: rgba(255, 255, 255, 0.85);
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    padding: 6px 12px;
+    border-radius: 999px;
+    flex-shrink: 0;
+  }
+
+  .status .dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #34e0b0;
+    box-shadow: 0 0 0 3px rgba(52, 224, 176, 0.25);
+  }
+
+  .frame-wrap {
+    position: relative;
+    flex: 1;
+    background: var(--paper);
+  }
+
+  iframe {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    border: 0;
+  }
+
+  footer {
+    text-align: center;
+    padding: 10px 0 2px;
+    font-size: 11.5px;
+    color: var(--ink-soft);
+    letter-spacing: 0.01em;
+  }
+
+  @media (max-width: 480px) {
+    body { padding: 0; }
+    .stage { max-height: 100%; }
+    .card { border-radius: 0; border: none; }
+    header { padding: 14px 16px; }
+  }
 </style>
 </head>
 <body>
-
-<div class="fluid-layer" aria-hidden="true">
-  <svg viewBox="0 0 1000 1000" preserveAspectRatio="xMidYMid slice">
-    <defs>
-      <filter id="fluidTurb" x="-20%" y="-20%" width="140%" height="140%">
-        <feTurbulence id="turb" type="fractalNoise" baseFrequency="0.008 0.012" numOctaves="2" seed="7" result="noise">
-          <animate attributeName="baseFrequency" dur="26s" values="0.008 0.012;0.014 0.006;0.008 0.012" repeatCount="indefinite"/>
-        </feTurbulence>
-        <feDisplacementMap in="SourceGraphic" in2="noise" scale="140"/>
-        <feGaussianBlur stdDeviation="18"/>
-      </filter>
-      <radialGradient id="gA" cx="50%" cy="50%" r="50%">
-        <stop offset="0%" stop-color="var(--sky-a)" stop-opacity="0.9"/>
-        <stop offset="100%" stop-color="var(--sky-a)" stop-opacity="0"/>
-      </radialGradient>
-      <radialGradient id="gB" cx="50%" cy="50%" r="50%">
-        <stop offset="0%" stop-color="var(--sky-b)" stop-opacity="0.85"/>
-        <stop offset="100%" stop-color="var(--sky-b)" stop-opacity="0"/>
-      </radialGradient>
-      <radialGradient id="gD" cx="50%" cy="50%" r="50%">
-        <stop offset="0%" stop-color="var(--sky-d)" stop-opacity="0.7"/>
-        <stop offset="100%" stop-color="var(--sky-d)" stop-opacity="0"/>
-      </radialGradient>
-    </defs>
-    <circle class="blob b1" cx="240" cy="260" r="380" fill="url(#gA)"/>
-    <circle class="blob b2" cx="760" cy="300" r="340" fill="url(#gB)"/>
-    <circle class="blob b3" cx="520" cy="760" r="420" fill="url(#gD)"/>
-  </svg>
-</div>
-<div class="grain"></div>
-
-<div class="stage">
-  <div class="eyebrow-row">
-    <span><span class="dot"></span>SKY · LIVE</span>
-    <span id="clock">--:--</span>
-  </div>
-
-  <div class="hero">
-    <div class="place" id="place">위치 확인 중…</div>
-    <div class="temp-row">
-      <div class="temp-big" id="tempBig">--<sup>°C</sup></div>
-      <div class="cond-block">
-        <div class="cond-name" id="condName">날씨 불러오는 중</div>
-        <div class="cond-sub" id="condSub">체감 --° · 최고 --° · 최저 --°</div>
+  <div class="stage">
+    <div class="card">
+      <header>
+        <div class="avatar">AI</div>
+        <div class="header-text">
+          <span class="title">AI 학습 어시스턴트</span>
+          <span class="subtitle">수업 도우미 · Copilot Studio</span>
+        </div>
+        <div class="status"><span class="dot"></span>온라인</div>
+      </header>
+      <div class="frame-wrap">
+        <iframe
+          src="https://copilotstudio.microsoft.com/environments/9324e73a-cd4e-e049-b7ba-177af6165e9c/bots/crbf2_bot_OxrdOv/webchat?__version__=2&enableFileAttachment=false&cliAgent=true"
+          frameborder="0"
+          allow="microphone"
+        ></iframe>
       </div>
     </div>
+    <footer>이 대화는 수업용 AI 에이전트로 진행됩니다</footer>
   </div>
-
-  <div class="hourly-wrap">
-    <div class="hourly-label">오늘 시간별 날씨</div>
-    <div class="hourly-strip" id="hourlyStrip"></div>
-  </div>
-
-  <div class="meta-row" id="metaRow"></div>
-</div>
-
-<button class="chat-toggle" id="chatToggle" aria-expanded="false" aria-controls="chatPanel">
-  <span class="pulse"></span> 날씨 AI에게 물어보기
-</button>
-
-<div class="chat-panel" id="chatPanel">
-  <div class="chat-head">
-    <span>Weather Agent</span>
-    <span class="close" id="chatClose">닫기 ✕</span>
-  </div>
-  <iframe title="Weather AI Agent" src="https://copilotstudio.microsoft.com/environments/9324e73a-cd4e-e049-b7ba-177af6165e9c/bots/crbf2_k-weatheraiagent_ePtbzc/webchat?__version__=2&enableFileAttachment=false&cliAgent=true"></iframe>
-</div>
-
-<script>
-(function(){
-  // ---------- clock ----------
-  function tickClock(){
-    var d = new Date();
-    var hh = String(d.getHours()).padStart(2,'0');
-    var mm = String(d.getMinutes()).padStart(2,'0');
-    document.getElementById('clock').textContent = hh+':'+mm;
-  }
-  tickClock(); setInterval(tickClock, 15000);
-
-  // ---------- chat panel toggle ----------
-  var toggle = document.getElementById('chatToggle');
-  var panel = document.getElementById('chatPanel');
-  var closeBtn = document.getElementById('chatClose');
-  function openPanel(){ panel.classList.add('open'); toggle.setAttribute('aria-expanded','true'); }
-  function closePanel(){ panel.classList.remove('open'); toggle.setAttribute('aria-expanded','false'); }
-  toggle.addEventListener('click', function(){ panel.classList.contains('open') ? closePanel() : openPanel(); });
-  closeBtn.addEventListener('click', closePanel);
-
-  // ---------- weather code -> condition (WMO) ----------
-  function weatherMeta(code, isDay){
-    var day = isDay !== 0;
-    if(code===0) return {name: day? '맑음':'맑은 밤', theme:'clear', icon:'sun'};
-    if(code===1||code===2) return {name:'대체로 맑음', theme:'clear', icon: day?'sun-cloud':'moon-cloud'};
-    if(code===3) return {name:'흐림', theme:'cloudy', icon:'cloud'};
-    if(code===45||code===48) return {name:'안개', theme:'cloudy', icon:'fog'};
-    if([51,53,55,56,57].indexOf(code)>-1) return {name:'이슬비', theme:'rain', icon:'drizzle'};
-    if([61,63,65,66,67].indexOf(code)>-1) return {name:'비', theme:'rain', icon:'rain'};
-    if([71,73,75,77].indexOf(code)>-1) return {name:'눈', theme:'snow', icon:'snow'};
-    if([80,81,82].indexOf(code)>-1) return {name:'소나기', theme:'rain', icon:'rain'};
-    if([85,86].indexOf(code)>-1) return {name:'눈 소나기', theme:'snow', icon:'snow'};
-    if([95,96,99].indexOf(code)>-1) return {name:'뇌우', theme:'storm', icon:'storm'};
-    return {name:'날씨 정보 없음', theme:'clear', icon:'sun'};
-  }
-
-  var THEMES = {
-    clear:  {a:'#4FA8E8', b:'#7EC8F2', c:'#0B3B66', d:'#FFE7B3', speed:'26s'},
-    cloudy: {a:'#8FA3B8', b:'#5B6E85', c:'#1B2431', d:'#C9D6E3', speed:'32s'},
-    rain:   {a:'#3A5A78', b:'#25344A', c:'#0A121F', d:'#6E93AE', speed:'14s'},
-    snow:   {a:'#AFCBE0', b:'#7D9BB8', c:'#1C2A3A', d:'#F1F7FC', speed:'40s'},
-    storm:  {a:'#3B3554', b:'#241F3A', c:'#080714', d:'#8B7FB0', speed:'9s'}
-  };
-  function applyTheme(themeKey, isDay){
-    var t = THEMES[themeKey] || THEMES.clear;
-    var root = document.documentElement.style;
-    root.setProperty('--sky-a', t.a);
-    root.setProperty('--sky-b', t.b);
-    root.setProperty('--sky-c', isDay? t.c : '#050810');
-    root.setProperty('--sky-d', t.d);
-    root.setProperty('--blob-speed', t.speed);
-  }
-
-  function iconSVG(kind){
-    var s = {
-      'sun':'<circle cx="12" cy="12" r="5" fill="currentColor"/><g stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M12 1v3M12 20v3M23 12h-3M4 12H1M19.8 4.2l-2.1 2.1M6.3 17.7l-2.1 2.1M19.8 19.8l-2.1-2.1M6.3 6.3 4.2 4.2"/></g>',
-      'moon-cloud':'<path d="M9 3a6 6 0 1 0 7 7 5 5 0 0 1-7-7z" fill="currentColor"/>',
-      'sun-cloud':'<circle cx="9" cy="9" r="4" fill="currentColor" opacity="0.9"/><path d="M6 20a5 5 0 1 1 1.2-9.85A6 6 0 0 1 19 13.5 4.5 4.5 0 0 1 18.5 20H6z" fill="currentColor" opacity="0.85"/>',
-      'cloud':'<path d="M6 19a5 5 0 1 1 1.2-9.85A6.5 6.5 0 0 1 20 13.5 4.5 4.5 0 0 1 19.5 19H6z" fill="currentColor"/>',
-      'fog':'<path d="M6 10a5 5 0 1 1 1.2-9.85" fill="none"/><g stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 12h18M5 16h14M7 20h10"/></g>',
-      'drizzle':'<path d="M6 12a5 5 0 1 1 1.2-9.85A6.5 6.5 0 0 1 19 6.5 4.5 4.5 0 0 1 18.5 11H6z" fill="currentColor"/><g stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M8 17v3M12 17v3M16 17v3"/></g>',
-      'rain':'<path d="M6 11a5 5 0 1 1 1.2-9.85A6.5 6.5 0 0 1 19 5.5 4.5 4.5 0 0 1 18.5 10H6z" fill="currentColor"/><g stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M7 16l-1.5 4M12 16l-1.5 4M17 16l-1.5 4"/></g>',
-      'snow':'<path d="M6 10a5 5 0 1 1 1.2-9.85A6.5 6.5 0 0 1 19 4.5 4.5 4.5 0 0 1 18.5 9H6z" fill="currentColor" opacity="0.9"/><g stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M8 15v6M8 16.5l-2 1.5M8 16.5l2 1.5M8 19.5l-2 1.5M8 19.5l2 1.5M16 15v6M16 16.5l-2 1.5M16 16.5l2 1.5M16 19.5l-2 1.5M16 19.5l2 1.5"/></g>',
-      'storm':'<path d="M6 10a5 5 0 1 1 1.2-9.85A6.5 6.5 0 0 1 19 4.5 4.5 4.5 0 0 1 18.5 9H6z" fill="currentColor"/><path d="M12 12l-3 6h3l-1.5 5 5-7h-3l2-4z" fill="#FFE28A" stroke="#FFE28A"/>'
-    };
-    return '<svg class="weather-icon" viewBox="0 0 24 24" fill="none">'+(s[kind]||s.sun)+'</svg>';
-  }
-
-  function fmtHour(iso){
-    var d = new Date(iso);
-    var h = d.getHours();
-    return (h===0? '자정' : h===12? '정오' : (h%12===0?12:h%12)+(h<12?'AM':'PM'));
-  }
-
-  function render(data, placeName){
-    var cur = data.current;
-    var meta = weatherMeta(cur.weather_code, cur.is_day);
-    applyTheme(meta.theme, cur.is_day);
-
-    document.getElementById('place').textContent = placeName;
-    document.getElementById('tempBig').innerHTML = Math.round(cur.temperature_2m) + '<sup>°C</sup>';
-    document.getElementById('condName').textContent = meta.name;
-
-    var todayIdx = 0;
-    var hiToday = Math.round(data.daily.temperature_2m_max[todayIdx]);
-    var loToday = Math.round(data.daily.temperature_2m_min[todayIdx]);
-    document.getElementById('condSub').textContent =
-      '체감 ' + Math.round(cur.apparent_temperature) + '° · 최고 ' + hiToday + '° · 최저 ' + loToday + '°';
-
-    // hourly strip: next 12 hours from now
-    var nowTs = new Date(data.current.time).getTime();
-    var strip = document.getElementById('hourlyStrip');
-    strip.innerHTML = '';
-    var count = 0;
-    for(var i=0;i<data.hourly.time.length && count<12;i++){
-      var t = new Date(data.hourly.time[i]).getTime();
-      if(t < nowTs - 3600000) continue;
-      var hm = weatherMeta(data.hourly.weather_code[i], data.hourly.is_day[i]);
-      var card = document.createElement('div');
-      card.className = 'hour-card' + (count===0 ? ' now' : '');
-      card.innerHTML =
-        '<div class="hour-time">'+ (count===0? '지금' : fmtHour(data.hourly.time[i])) +'</div>' +
-        iconSVG(hm.icon).replace('weather-icon','weather-icon hour-icon') +
-        '<div class="hour-temp">'+ Math.round(data.hourly.temperature_2m[i]) +'°</div>';
-      strip.appendChild(card);
-      count++;
-    }
-
-    // meta row
-    var meta2 = document.getElementById('metaRow');
-    meta2.innerHTML =
-      '<div class="meta-item">습도<b>'+ cur.relative_humidity_2m +'%</b></div>' +
-      '<div class="meta-item">풍속<b>'+ Math.round(cur.wind_speed_10m) +' km/h</b></div>' +
-      '<div class="meta-item">강수확률<b>'+ (data.hourly.precipitation_probability[ (function(){for(var j=0;j<data.hourly.time.length;j++){if(new Date(data.hourly.time[j]).getTime()>=nowTs-1800000)return j;}return 0;})() ]||0) +'%</b></div>';
-  }
-
-  function loadWeather(lat, lon, placeName){
-    var url = 'https://api.open-meteo.com/v1/forecast?latitude='+lat+'&longitude='+lon+
-      '&current=temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m,is_day' +
-      '&hourly=temperature_2m,weather_code,is_day,precipitation_probability' +
-      '&daily=temperature_2m_max,temperature_2m_min' +
-      '&timezone=auto&forecast_days=2';
-    fetch(url).then(function(r){return r.json();}).then(function(data){
-      render(data, placeName);
-    }).catch(function(){
-      document.getElementById('condName').textContent = '날씨를 불러오지 못했어요';
-      document.getElementById('place').textContent = placeName;
-    });
-  }
-
-  function reverseGeocodeLabel(lat, lon, cb){
-    // lightweight label fallback without extra API dependency
-    cb('현재 위치 · ' + lat.toFixed(2) + ', ' + lon.toFixed(2));
-  }
-
-  // Tokyo fallback (user's approximate location)
-  var FALLBACK = { lat: 35.6762, lon: 139.6503, name: 'Tokyo, Japan' };
-
-  if(navigator.geolocation){
-    navigator.geolocation.getCurrentPosition(function(pos){
-      var lat = pos.coords.latitude, lon = pos.coords.longitude;
-      reverseGeocodeLabel(lat, lon, function(label){
-        loadWeather(lat, lon, label);
-      });
-    }, function(){
-      loadWeather(FALLBACK.lat, FALLBACK.lon, FALLBACK.name);
-    }, { timeout: 4000 });
-  } else {
-    loadWeather(FALLBACK.lat, FALLBACK.lon, FALLBACK.name);
-  }
-})();
-</script>
-
 </body>
 </html>
